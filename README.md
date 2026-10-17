@@ -4,7 +4,7 @@ Stack:
 
 * Hono
 * JSX (Hono middleware)
-* htmx
+* Datastar
 * Zod
 * Cloudflare Workers
 * Cloudflare D1
@@ -38,7 +38,8 @@ npm run deploy
 
 ## Author
 
-Yusuke Wada
+Yusuke Wada  
+Ryuta Fukanoki
 
 ## License
 

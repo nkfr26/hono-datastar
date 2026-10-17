@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
+import { ServerSentEventGenerator } from '@starfederation/datastar-sdk/web'
 
 import { renderer, AddTodo, Item } from './components'
 
@@ -23,10 +24,9 @@ app.get('/', async (c) => {
   return c.render(
     <div>
       <AddTodo />
-      {todos.map((todo) => {
-        return <Item title={todo.title} id={todo.id} />
-      })}
-      <div id="todo"></div>
+      <div id="todo">
+        {todos.map((todo) => <Item title={todo.title} id={todo.id} />)}
+      </div>
     </div>
   )
 })
@@ -34,24 +34,29 @@ app.get('/', async (c) => {
 app.post(
   '/todo',
   zValidator(
-    'form',
+    'json',
     z.object({
       title: z.string().min(1)
     })
   ),
   async (c) => {
-    const { title } = c.req.valid('form')
+    const { title } = c.req.valid('json')
     const id = crypto.randomUUID()
     await c.env.DB.prepare(`INSERT INTO todo(id, title) VALUES(?, ?);`).bind(id, title).run()
-    return c.html(<Item title={title} id={id} />)
+    const item = <Item title={title} id={id} />
+    return ServerSentEventGenerator.stream((stream) => {
+      stream.patchElements(item.toString(), { selector: '#todo', mode: 'append' })
+      stream.patchSignals(JSON.stringify({ title: '' }))
+    })
   }
 )
 
 app.delete('/todo/:id', async (c) => {
   const id = c.req.param('id')
   await c.env.DB.prepare(`DELETE FROM todo WHERE id = ?;`).bind(id).run()
-  c.status(200)
-  return c.body(null)
+  return ServerSentEventGenerator.stream((stream) => {
+    stream.removeElements(`#todo-${id}`)
+  })
 })
 
 export default app
