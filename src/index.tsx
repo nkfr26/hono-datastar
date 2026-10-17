@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
-import { ServerSentEventGenerator } from '@starfederation/datastar-sdk/web'
+import { ServerSentEventGenerator as sse } from '@starfederation/datastar-sdk/web'
 
 import { renderer, AddTodo, Item } from './components'
 
@@ -44,7 +44,7 @@ app.post(
     const id = crypto.randomUUID()
     await c.env.DB.prepare(`INSERT INTO todo(id, title) VALUES(?, ?);`).bind(id, title).run()
     const item = <Item title={title} id={id} />
-    return ServerSentEventGenerator.stream((stream) => {
+    return sse.stream((stream) => {
       stream.patchElements(item.toString(), { selector: '#todo', mode: 'append' })
       stream.patchSignals(JSON.stringify({ title: '' }))
     })
@@ -54,7 +54,7 @@ app.post(
 app.delete('/todo/:id', async (c) => {
   const id = c.req.param('id')
   await c.env.DB.prepare(`DELETE FROM todo WHERE id = ?;`).bind(id).run()
-  return ServerSentEventGenerator.stream((stream) => {
+  return sse.stream((stream) => {
     stream.removeElements(`#todo-${id}`)
   })
 })
